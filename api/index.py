@@ -11,15 +11,42 @@ app = Flask(__name__)
 STATUSES = ['Keep', 'Sell', 'Listed', 'Sold', 'Donated', 'Trash']
 
 _db_initialized = False
+_db_error = None
 
 @app.before_request
 def ensure_db():
-    global _db_initialized
+    global _db_initialized, _db_error
     if not _db_initialized:
-        conn = get_conn()
-        init_db(conn)
-        conn.close()
-        _db_initialized = True
+        try:
+            conn = get_conn()
+            init_db(conn)
+            conn.close()
+            _db_initialized = True
+        except Exception as e:
+            _db_error = str(e)
+            raise
+
+
+@app.route('/api/health', methods=['GET'])
+def health():
+    from _db import POSTGRES_URL
+    info = {
+        'db_type': 'postgres' if POSTGRES_URL else 'sqlite',
+        'postgres_url_set': bool(POSTGRES_URL),
+        'db_initialized': _db_initialized,
+        'error': _db_error,
+    }
+    if _db_initialized:
+        try:
+            conn = get_conn()
+            rooms = query(conn, "SELECT COUNT(*) as c FROM room")
+            items = query(conn, "SELECT COUNT(*) as c FROM item")
+            conn.close()
+            info['rooms_count'] = rooms[0]['c']
+            info['items_count'] = items[0]['c']
+        except Exception as e:
+            info['query_error'] = str(e)
+    return jsonify(info)
 
 
 @app.route('/api/rooms', methods=['GET'])
