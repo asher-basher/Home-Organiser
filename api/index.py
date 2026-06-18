@@ -10,6 +10,17 @@ app = Flask(__name__)
 
 STATUSES = ['Keep', 'Sell', 'Listed', 'Sold', 'Donated', 'Trash']
 
+_db_initialized = False
+
+@app.before_request
+def ensure_db():
+    global _db_initialized
+    if not _db_initialized:
+        conn = get_conn()
+        init_db(conn)
+        conn.close()
+        _db_initialized = True
+
 
 @app.route('/api/rooms', methods=['GET'])
 def list_rooms():

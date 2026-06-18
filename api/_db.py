@@ -10,7 +10,10 @@ def get_conn():
         return psycopg2.connect(url, sslmode='require')
     else:
         import sqlite3
-        db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'inventory.db')
+        if os.environ.get('VERCEL'):
+            db_path = '/tmp/inventory.db'
+        else:
+            db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'inventory.db')
         conn = sqlite3.connect(db_path)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys=ON")
