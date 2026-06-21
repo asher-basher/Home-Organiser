@@ -92,7 +92,7 @@ def list_items():
     conn = get_conn()
     sql = """
         SELECT item.id, item.name, item.room_id, item.notes, item.status,
-               item.estimated_value, item.sold_price, item.thumbnail,
+               item.priority, item.estimated_value, item.sold_price, item.thumbnail,
                item.created_at, item.updated_at,
                room.name as room_name
         FROM item
@@ -116,12 +116,18 @@ def list_items():
         sql += " AND item.status = ?"
         params.append(status)
 
+    priority = request.args.get('priority')
+    if priority:
+        sql += " AND item.priority = ?"
+        params.append(priority)
+
     sort = request.args.get('sort', 'newest')
     sort_map = {
         'newest': 'item.created_at DESC',
         'oldest': 'item.created_at ASC',
         'name': 'item.name ASC',
         'price': 'item.estimated_value DESC',
+        'priority': "CASE item.priority WHEN 'High' THEN 1 WHEN 'Med' THEN 2 WHEN 'Low' THEN 3 END ASC",
     }
     sql += f" ORDER BY {sort_map.get(sort, 'item.created_at DESC')}"
 
@@ -139,13 +145,14 @@ def create_item():
 
     conn = get_conn()
     item_id = execute(conn, """
-        INSERT INTO item (name, room_id, notes, status, estimated_value, sold_price, photo, thumbnail)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO item (name, room_id, notes, status, priority, estimated_value, sold_price, photo, thumbnail)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         name,
         data.get('room_id') or None,
         data.get('notes', ''),
         data.get('status', 'Keep'),
+        data.get('priority', 'Low'),
         float(data.get('estimated_value') or 0),
         float(data.get('sold_price') or 0),
         data.get('photo', ''),
@@ -175,7 +182,7 @@ def update_item(item_id):
     data = request.json
     conn = get_conn()
     execute(conn, """
-        UPDATE item SET name=?, room_id=?, notes=?, status=?,
+        UPDATE item SET name=?, room_id=?, notes=?, status=?, priority=?,
         estimated_value=?, sold_price=?, photo=?, thumbnail=?,
         updated_at=? WHERE id=?
     """, (
@@ -183,6 +190,7 @@ def update_item(item_id):
         data.get('room_id') or None,
         data.get('notes', ''),
         data.get('status', 'Keep'),
+        data.get('priority', 'Low'),
         float(data.get('estimated_value') or 0),
         float(data.get('sold_price') or 0),
         data.get('photo', ''),

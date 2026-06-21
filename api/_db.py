@@ -106,6 +106,17 @@ def init_db(conn):
             );
         """)
 
+    # Migration: add priority column
+    try:
+        if POSTGRES_URL:
+            cur.execute("ALTER TABLE item ADD COLUMN IF NOT EXISTS priority TEXT DEFAULT 'Low'")
+        else:
+            cur.execute("ALTER TABLE item ADD COLUMN priority TEXT DEFAULT 'Low'")
+    except Exception:
+        pass
+
+    conn.commit()
+
     default_rooms = [
         'Living Room', 'Bedroom', 'Kitchen', 'Bathroom',
         'Garage', 'Storage', 'Other'
