@@ -210,11 +210,13 @@
                 '</select>';
 
             var listHtml = '';
+            var priorityCycle = { 'Low': 'Med', 'Med': 'High', 'High': 'Low' };
             items.forEach(function (item) {
                 var thumb = item.thumbnail
                     ? '<img class="item-thumb" src="' + item.thumbnail + '" alt="">'
                     : '<div class="item-thumb-placeholder"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="16" height="16" rx="2"/><circle cx="7" cy="7" r="1.5"/><path d="M2 13l4-4 3 3 3-3 6 6"/></svg></div>';
 
+                var pri = item.priority || 'Low';
                 listHtml += '<div class="item-card" data-id="' + item.id + '">' +
                     thumb +
                     '<div class="item-info">' +
@@ -222,10 +224,12 @@
                         '<div class="item-meta">' +
                             (item.room_name ? esc(item.room_name) : 'No room') +
                             ' &middot; ' + statusBadge(item.status) +
-                            (item.priority ? ' ' + priorityBadge(item.priority) : '') +
                         '</div>' +
                     '</div>' +
-                    (item.estimated_value && item.status !== 'Keep' ? '<div class="item-price">' + formatPrice(item.estimated_value) + '</div>' : '') +
+                    '<div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:4px;flex-shrink:0">' +
+                        (item.estimated_value && item.status !== 'Keep' ? '<div class="item-price" style="margin:0">' + formatPrice(item.estimated_value) + '</div>' : '') +
+                        '<span class="badge badge-' + pri.toLowerCase() + ' badge-clickable" data-item-id="' + item.id + '" data-priority="' + pri + '">' + pri + '</span>' +
+                    '</div>' +
                 '</div>';
             });
 
@@ -236,13 +240,32 @@
                 '<div class="filter-bar"><small style="color:var(--text-light);margin-right:4px;flex-shrink:0">Priority:</small>' + priorityChips + '<span style="margin-left:auto;flex-shrink:0">' + sortSelect + '</span></div>' +
                 '<p style="padding:0 16px;font-size:0.82rem;color:var(--text-light)">' + items.length + ' item' + (items.length !== 1 ? 's' : '') + '</p>' +
                 (items.length
-                    ? '<div class="items-grid"><div class="card" style="margin:0">' + listHtml + '</div></div>'
+                    ? '<div class="items-grid">' + listHtml + '</div>'
                     : '<div class="empty-state"><p>No items found</p></div>');
 
             document.querySelectorAll('.filter-chip').forEach(function (chip) {
                 chip.addEventListener('click', function () {
                     itemFilters[this.dataset.filter] = this.dataset.val;
                     renderItems();
+                });
+            });
+
+            document.querySelectorAll('.badge-clickable').forEach(function (badge) {
+                badge.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    var itemId = this.dataset.itemId;
+                    var cur = this.dataset.priority || 'Low';
+                    var next = priorityCycle[cur] || 'Low';
+                    var el = this;
+                    api('/items/' + itemId + '/status', {
+                        method: 'PATCH',
+                        body: { status: null, priority: next }
+                    }).then(function () {
+                        el.dataset.priority = next;
+                        el.textContent = next;
+                        el.className = 'badge badge-' + next.toLowerCase() + ' badge-clickable';
+                        toast(next + ' priority');
+                    });
                 });
             });
 

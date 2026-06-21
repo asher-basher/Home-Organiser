@@ -215,12 +215,18 @@ def delete_item(item_id):
 @app.route('/api/items/<int:item_id>/status', methods=['PATCH'])
 def update_status(item_id):
     data = request.json
-    new_status = data.get('status')
-    if new_status not in STATUSES:
-        return jsonify({'error': 'Invalid status'}), 400
     conn = get_conn()
-    execute(conn, "UPDATE item SET status=?, updated_at=? WHERE id=?",
-            (new_status, datetime.now().isoformat(), item_id))
+    new_status = data.get('status')
+    new_priority = data.get('priority')
+
+    if new_status and new_status in STATUSES:
+        execute(conn, "UPDATE item SET status=?, updated_at=? WHERE id=?",
+                (new_status, datetime.now().isoformat(), item_id))
+
+    if new_priority and new_priority in ('High', 'Med', 'Low'):
+        execute(conn, "UPDATE item SET priority=?, updated_at=? WHERE id=?",
+                (new_priority, datetime.now().isoformat(), item_id))
+
     conn.commit()
     conn.close()
     return jsonify({'ok': True})
